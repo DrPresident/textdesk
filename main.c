@@ -8,98 +8,43 @@
 #include <X11/Xutil.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <fcntl.h>
-#include <sys/ioctl.h>
-#include <stropts.h>
 #include <string.h>
-
+#include <sys/wait.h>
 #include "findwin.h"
 
 int main(int argc, char *argv[])
 {
     //spawn bash
-    pid_t pid;
-    int bashin[2], bashout[2], basherr[2];
-    /*
-    pipe(bashin);
-    pipe(bashout);
-    pipe(basherr);
-    */
-
-    pid = fork();
+    pid_t pid = fork();
     if(pid == 0)
-    {
-        /*
-        dup2(bashin[0],0);
-        dup2(bashout[1],1);
-        dup2(basherr[1],2);
-        */
-
-        printf("xterm\n");
         execl("/usr/bin/xterm", "/usr/bin/xterm", NULL);
-        printf("xterm done\n");
-    }
-        /*
-        close(bashin[0]);
-        close(bashout[1]);
-        fcntl(bashout[0], F_SETFL, 
-                fcntl(bashout[0], F_GETFL, 0) | O_NONBLOCK);
-        close(basherr[1]);
-        fcntl(basherr[0], F_SETFL, 
-                fcntl(basherr[0], F_GETFL, 0) | O_NONBLOCK);
-        */
 
     sleep(1);
 
-    //GC grc;
-    //XGCValues grv;
-    XFontStruct *fontinfo;
-    XColor color,
-           dummy;
-
     Display *display = XOpenDisplay(0);
-    /*
-    Window win = XCreateSimpleWindow(display, XDefaultRootWindow(display), 
-            0, 0, 1920, 1080, 0, 0, 
-            WhitePixel(display, DefaultScreen(display)));
-    */
     Window win = search(display, XDefaultRootWindow(display), pid); 
-    printf("win:%i\n",win);
     if(win == 0)
         perror("Window not found\n");
-    //XSelectInput(display, win, KeyPressMask | KeyReleaseMask);
 
     Atom window_type = XInternAtom(display, 
             "_NET_WM_WINDOW_TYPE", False);
 
     Atom desktop = XInternAtom(display, 
             "_NET_WM_WINDOW_TYPE_DESKTOP", False);
-    printf("changing property\n");
+
     XChangeProperty (display, win, window_type, XA_ATOM, 
             32, PropModeReplace, (unsigned char *) &desktop, 1);
     
     XWindowChanges changes;
     changes.x = 0;
-    changes.y = 0;
+    changes.y = 10;
     changes.width = 1920;
-    changes.height = 1080;
+    changes.height = 1070;
     changes.border_width = 0;
     XConfigureWindow(display, win, CWWidth | CWHeight | CWX | CWY, &changes);
 
-    printf("clearing window\n");
     XClearWindow(display, win);
-    printf("xmapwindow\n");
     XMapWindow(display, win);
-    printf("making font\n");
-    //fontinfo = XLoadQueryFont(display,"-*-*-*-*-*-*-34-*-*-*-*-*-*-*");
-
-    XAllocNamedColor(display, DefaultColormap(display,
-            DefaultScreen(display)),"red", &color, &dummy);
-
-    //grv.font = fontinfo->fid;
-    //grv.foreground = color.pixel;
-
-    //grc = XCreateGC(display,win,GCFont + GCForeground, &grv);
 
     XEvent event;
     int x = 0,
@@ -148,16 +93,9 @@ int main(int argc, char *argv[])
                 }
                 break;
         }
-        /*
-        char c[1];
-        while(ioctl(bashout[0], I_NREAD, 1) == 0)
-        {
-            read(bashout[0], c, 1);
-            printf("bash:%c\n", c);
-            fflush(stdout);
-            XDrawString(display, win, grc,x,y,c,1); 
-        }
-        */
+
+        int status;
+        wait(&status);
     }
 
     XUnmapWindow(display, win);
